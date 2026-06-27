@@ -1007,8 +1007,8 @@ function openBillGroup(rows){
   }).join("");
   openModal("bill-modal");
 }
-async function editBillR(r){const v=prompt("ຈຳນວນໃໝ່:",r[2]);if(!v)return;try{const res=await api.post("editSaleRow",{dateStr:String(r[0]),name:r[1],oldQty:r[2],newQty:v});showToast("ok","ສຳເລັດ!",res.message);closeModal("bill-modal");loadDash();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
-async function delBillR(r){if(!confirm("ລຶບ?"))return;try{const res=await api.post("cancelSaleData",{dateStr:String(r[0]),name:r[1],qty:r[2]});showToast("ok","ສຳເລັດ!",res.message);closeModal("bill-modal");loadDash();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
+async function editBillR(r){const v=await dlgPrompt("ແກ້ໄຂຈຳນວນ","ໃສ່ຈຳນວນໃໝ່ສຳລັບ: "+r[1],r[2],"ຈຳນວນ...");if(!v)return;try{const res=await api.post("editSaleRow",{dateStr:String(r[0]),name:r[1],oldQty:r[2],newQty:v});showToast("ok","ສຳເລັດ!",res.message);closeModal("bill-modal");loadDash();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
+async function delBillR(r){if(!await dlgConfirm("ລຶບລາຍການ","ຕ້ອງການລຶບລາຍການນີ້ແທ້ບໍ?","🗑️","var(--danger)"))return;try{const res=await api.post("cancelSaleData",{dateStr:String(r[0]),name:r[1],qty:r[2]});showToast("ok","ສຳເລັດ!",res.message);closeModal("bill-modal");loadDash();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
 function showDashDetail(date){
   const day=dashData[date];if(!day)return;
   document.getElementById("dash-date-title").textContent="📅 "+date;
@@ -1303,10 +1303,10 @@ function renderHisItems(t){
     return hdr+cards;
   }).join("");
 }
-async function editHisSale(r){const v=prompt("ຈຳນວນໃໝ່:",r[2]);if(!v)return;try{const res=await api.post("editSaleRow",{dateStr:String(r[0]),name:r[1],oldQty:r[2],newQty:v});showToast("ok","ສຳເລັດ!",res.message);loadHis();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
-async function delHisSale(r){if(!confirm("ລຶບ?"))return;try{const res=await api.post("cancelSaleData",{dateStr:String(r[0]),name:r[1],qty:r[2]});showToast("ok","ສຳເລັດ!",res.message);loadHis();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
-async function editHisStock(r){const v=prompt("ຈຳນວນໃໝ່:",r[2]);if(!v)return;try{const res=await api.post("editStockRow",{dateStr:String(r[0]),name:r[1],oldQty:r[2],newQty:v});showToast("ok","ສຳເລັດ!",res.message);loadHis();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
-async function delHisStock(r){if(!confirm("ລຶບ?"))return;try{const res=await api.post("cancelStockRow",{dateStr:String(r[0]),name:r[1],qty:r[2]});showToast("ok","ສຳເລັດ!",res.message);loadHis();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
+async function editHisSale(r){const v=await dlgPrompt("ແກ້ໄຂການຂາຍ","ໃສ່ຈຳນວນໃໝ່: "+r[1],r[2],"ຈຳນວນ...");if(!v)return;try{const res=await api.post("editSaleRow",{dateStr:String(r[0]),name:r[1],oldQty:r[2],newQty:v});showToast("ok","ສຳເລັດ!",res.message);loadHis();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
+async function delHisSale(r){if(!await dlgConfirm("ລຶບປະຫວັດຂາຍ","ຕ້ອງການລຶບລາຍການຂາຍ: "+r[1]+" ×"+r[2]+" ແທ້ບໍ?","🗑️"))return;try{const res=await api.post("cancelSaleData",{dateStr:String(r[0]),name:r[1],qty:r[2]});showToast("ok","ສຳເລັດ!",res.message);loadHis();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
+async function editHisStock(r){const v=await dlgPrompt("ແກ້ໄຂສະຕ໋ອກ","ໃສ່ຈຳນວນໃໝ່: "+r[1],r[2],"ຈຳນວນ...");if(!v)return;try{const res=await api.post("editStockRow",{dateStr:String(r[0]),name:r[1],oldQty:r[2],newQty:v});showToast("ok","ສຳເລັດ!",res.message);loadHis();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
+async function delHisStock(r){if(!await dlgConfirm("ລຶບປະຫວັດສະຕ໋ອກ","ຕ້ອງການລຶບ: "+r[1]+" "+r[2]+" ຊິ້ນ?","🗑️"))return;try{const res=await api.post("cancelStockRow",{dateStr:String(r[0]),name:r[1],qty:r[2]});showToast("ok","ສຳເລັດ!",res.message);loadHis();}catch(e){showToast("err","ຜິດພາດ!",e.message);}}
 
 // ══════════════════════════════════════
 // ORDERS
@@ -1384,7 +1384,7 @@ async function updateStatus(code,newStatus,btnEl){
   const order=allOrders.find(o=>o.code===code);
   const wasAccepted=order&&order.orderStatus===ACCEPTED;
   const willAccept=newStatus===ACCEPTED;
-  if(willAccept&&!wasAccepted&&!confirm(`✅ ຮັບຍອດ Order #${code}?\nລະບົບຈະຕັດສະຕ໋ອກອັດຕະໂນມັດ!`))return;
+  if(willAccept&&!wasAccepted&&!await dlgConfirm("ຢືນຢັນຮັບຍອດ","Order #"+code+"\nລະບົບຈະຕັດສະຕ໋ອກອັດຕະໂນມັດ!","✅ ຮັບຍອດ","var(--primary)"))return;
   if(btnEl){btnEl.disabled=true;}
   try{
     const res=await fetch(SHOP_CONFIG.orderApiUrl,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"updateOrderStatus",code,status:newStatus})});
@@ -1414,7 +1414,7 @@ function parseOrderItems(summary){
   return items;
 }
 async function deleteOrderConfirm(code){
-  if(!confirm("ລຶບ Order #"+code+"?"))return;
+  if(!await dlgConfirm("ລຶບ Order","ຕ້ອງການລຶບ Order #"+code+" ອອກແທ້ບໍ?","🗑️","var(--danger)"))return;
   try{
     const res=await fetch(SHOP_CONFIG.orderApiUrl,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"deleteOrder",code})});
     const json=JSON.parse(await res.text());
@@ -1749,5 +1749,23 @@ const api={
   }
 };
 </script>
+
+<!-- ═══ CUSTOM DIALOG ═══ -->
+<div class="modal-overlay" id="custom-dialog" style="align-items:center">
+  <div style="background:var(--card-bg);border-radius:20px;padding:24px 20px;width:90%;max-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .3s cubic-bezier(.34,1.56,.64,1)">
+    <div id="dlg-icon" style="font-size:48px;margin-bottom:10px"></div>
+    <div id="dlg-title" style="font-size:17px;font-weight:900;color:var(--primary);margin-bottom:6px"></div>
+    <div id="dlg-msg"   style="font-size:13px;color:var(--text-sub);line-height:1.7;margin-bottom:18px;white-space:pre-line"></div>
+    <!-- Input field for prompt -->
+    <input type="text" id="dlg-input" placeholder="" style="display:none;width:100%;padding:10px 14px;border:2px solid var(--primary);border-radius:10px;font-size:15px;text-align:center;margin-bottom:14px;background:var(--input-bg);color:var(--text)">
+    <div style="display:flex;gap:10px">
+      <button id="dlg-cancel" style="flex:1;padding:12px;border:1.5px solid var(--border);border-radius:12px;background:none;font-size:14px;cursor:pointer;color:var(--text-sub);font-weight:500"></button>
+      <button id="dlg-ok"     style="flex:1;padding:12px;border:none;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;color:#fff"></button>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes slideUp{from{opacity:0;transform:translateY(30px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
+</style>
 </body>
 </html>
