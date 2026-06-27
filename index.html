@@ -636,19 +636,28 @@ input:checked+.slider::before{transform:translateX(19px);}
 
 <!-- ═══ ORDER NOTIF ═══ -->
 <div class="order-notif-overlay" id="order-notif">
-  <div class="order-notif-box">
-    <div class="notif-icon-wrap">🛒</div>
-    <div class="notif-title">ມີ Order ໃໝ່!</div>
-    <div class="notif-code" id="notif-code"></div>
-    <div class="notif-info"  id="notif-info"></div>
-    <div class="notif-bar"><div class="notif-bar-inner" id="notif-bar-inner" style="width:100%"></div></div>
-    <div class="notif-btns">
-      <button class="notif-dismiss" onclick="dismissNotif()">ປິດ</button>
-      <button class="notif-view"    onclick="viewNewOrder()">📋 ເບິ່ງ Order</button>
+  <div class="order-notif-box" style="max-width:380px;width:100%">
+    <div class="notif-icon-wrap" style="animation:notifPulse .8s infinite">🛒</div>
+    <div class="notif-title" style="font-size:20px">ມີ Order ໃໝ່! 🔔</div>
+    <!-- Pending orders list -->
+    <div id="notif-pending-list" style="max-height:200px;overflow-y:auto;margin:10px 0"></div>
+    <!-- Current order info -->
+    <div id="notif-code" class="notif-code" style="display:none"></div>
+    <div id="notif-info" class="notif-info" style="display:none"></div>
+    <!-- Count badge -->
+    <div id="notif-count-badge" style="background:rgba(var(--primary-rgb),.1);border-radius:8px;padding:8px;margin:8px 0;font-size:13px;color:var(--primary);font-weight:bold"></div>
+    <div style="font-size:11px;color:var(--text-sub);margin-bottom:12px">⚠️ ການແຈ້ງເຕືອນຈະຄ້າງໄວ້ຈົນກ່ວາ Admin ກົດຮັບ Order</div>
+    <div class="notif-btns" style="flex-direction:column;gap:8px">
+      <button class="notif-view" style="width:100%;padding:12px;font-size:14px" onclick="viewNewOrder()">📋 ໄປໜ້າ Order ເລີຍ</button>
+      <button class="notif-dismiss" style="width:100%;opacity:.7" onclick="snoozeNotif()">🔕 ຊ່ວຍຄາວ (5 ນາທີ)</button>
     </div>
   </div>
 </div>
 <button id="notif-sound-btn" onclick="toggleSound()">🔔 ສຽງ: ເປີດ</button>
+<!-- Floating badge when notif dismissed -->
+<div id="notif-floating-badge" onclick="reopenNotif()" style="display:none;position:fixed;bottom:80px;right:12px;background:var(--danger);color:#fff;border-radius:50%;width:52px;height:52px;align-items:center;justify-content:center;font-size:24px;cursor:pointer;z-index:600;box-shadow:0 4px 14px rgba(231,76,60,.5);animation:notifPulse .8s infinite;flex-direction:column">
+  🛒<span id="floating-count" style="font-size:10px;font-weight:bold;line-height:1"></span>
+</div>
 
 <!-- ═══ NAV ═══ -->
 <div class="nav">
@@ -1388,6 +1397,7 @@ async function updateStatus(code,newStatus,btnEl){
           await api.post("recordBulkSale",{cart:items.map(it=>({name:it.name,qty:it.qty,price:it.price,discount:0,note:"",customerName:order.customerName||"",customerPhone:order.customerPhone||"",customerAddr:order.customerAddr||"",shipping:order.shipping||""}))});
           showToast("ok","ຮັບຍອດ + ຕັດສະຕ໋ອກ!","#"+code);
         }else showToast("ok","ຮັບຍອດ!","#"+code);
+      clearPendingOrder(code);
       }catch(e2){showToast("warn","ຮັບຍອດ ຕັດສະຕ໋ອກຜິດ!",e2.message);}
     }else showToast("ok","ອັບເດດ!","#"+code+" → "+newStatus);
     const idx=allOrders.findIndex(o=>o.code===code);if(idx>=0)allOrders[idx].orderStatus=newStatus;
@@ -1443,21 +1453,87 @@ async function fetchLatestOrders(isInit){
     });
   }catch(e){}
 }
+// Pending orders queue
+let pendingOrders=[];
+let snoozedUntil=0;
+
 function showOrderNotif(order){
   notifNewOrder=order;
-  document.getElementById("notif-code").textContent="#"+(order.code||"");
-  document.getElementById("notif-info").innerHTML=`👤 ${order.customerName||"-"}<br>📞 ${order.customerPhone||"-"}<br>💰 ${fN(order.totalAmount||0)} ₭`;
-  document.getElementById("order-notif").classList.add("open");
+  // Add to pending if not already
+  if(!pendingOrders.find(o=>o.code===order.code)){
+    pendingOrders.push(order);
+  }
+  renderNotifPanel();
   if(notifEnabled)playNotifSound();
-  const bar=document.getElementById("notif-bar-inner");
-  bar.style.transition="none";bar.style.width="100%";
-  setTimeout(()=>{bar.style.transition="width 3s linear";bar.style.width="0%";},50);
-  clearTimeout(notifTimer);
-  notifTimer=setTimeout(()=>dismissNotif(),3000);
+  // Keep playing sound every 8s while unread
+  clearInterval(notifTimer);
+  notifTimer=setInterval(()=>{
+    if(pendingOrders.length>0 && notifEnabled && Date.now()>snoozedUntil){
+      playNotifSound();
+    }
+  },8000);
 }
-function dismissNotif(){clearTimeout(notifTimer);document.getElementById("order-notif").classList.remove("open");}
+
+function renderNotifPanel(){
+  if(pendingOrders.length===0){
+    document.getElementById("order-notif").classList.remove("open");
+    document.getElementById("notif-floating-badge").style.display="none";
+    clearInterval(notifTimer);
+    return;
+  }
+  // If snoozed - show floating badge only
+  if(Date.now()<snoozedUntil){
+    document.getElementById("order-notif").classList.remove("open");
+    const fb=document.getElementById("notif-floating-badge");
+    fb.style.display="flex";
+    document.getElementById("floating-count").textContent=pendingOrders.length;
+    return;
+  }
+  // Show full panel
+  document.getElementById("order-notif").classList.add("open");
+  document.getElementById("notif-floating-badge").style.display="none";
+  // Count badge
+  document.getElementById("notif-count-badge").innerHTML=
+    `🛒 ມີ <b style="font-size:18px">${pendingOrders.length}</b> Order ທີ່ລໍຖ້າຮັບ`;
+  // Pending list
+  document.getElementById("notif-pending-list").innerHTML=pendingOrders.map((o,i)=>`
+    <div style="background:rgba(var(--primary-rgb),.06);border:1.5px solid rgba(var(--primary-rgb),.2);border-radius:10px;padding:10px 12px;margin-bottom:7px;text-align:left">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:900;font-size:15px;color:var(--primary)">#${o.code||"-"}</span>
+        <span style="font-size:11px;color:var(--text-sub)">${o.submittedAt||""}</span>
+      </div>
+      <div style="font-size:12px;margin-top:4px">👤 <b>${o.customerName||"-"}</b> · 📞 ${o.customerPhone||"-"}</div>
+      <div style="font-size:13px;font-weight:bold;color:var(--primary);margin-top:3px">💰 ${fN(o.totalAmount||0)} ₭</div>
+    </div>`).join("");
+}
+
+function dismissNotif(){
+  // NOT allowed - must go to order page to confirm
+  viewNewOrder();
+}
+function snoozeNotif(){
+  snoozedUntil=Date.now()+5*60*1000; // 5 minutes
+  document.getElementById("order-notif").classList.remove("open");
+  const fb=document.getElementById("notif-floating-badge");
+  fb.style.display="flex";
+  document.getElementById("floating-count").textContent=pendingOrders.length;
+  showToast("info","ປິດຊົ່ວຄາວ","ຈະແຈ້ງເຕືອນໃໝ່ໃນ 5 ນາທີ",3000);
+  // Re-open after 5 min
+  setTimeout(()=>{if(pendingOrders.length>0){snoozedUntil=0;renderNotifPanel();if(notifEnabled)playNotifSound();}},5*60*1000);
+}
+function reopenNotif(){
+  snoozedUntil=0;
+  renderNotifPanel();
+  if(notifEnabled)playNotifSound();
+}
+function clearPendingOrder(code){
+  pendingOrders=pendingOrders.filter(o=>o.code!==code);
+  renderNotifPanel();
+}
 function viewNewOrder(){
-  dismissNotif();
+  document.getElementById("order-notif").classList.remove("open");
+  document.getElementById("notif-floating-badge").style.display="none";
+  clearInterval(notifTimer);
   const navItems=document.querySelectorAll(".nav-item");
   navItems.forEach(n=>n.classList.remove("active-nav"));
   navItems[navItems.length-1].classList.add("active-nav");
