@@ -1748,6 +1748,60 @@ const api={
     return json;
   }
 };
+
+// ══════════════════════════════════════
+// CUSTOM DIALOG — replace alert/confirm/prompt
+// ══════════════════════════════════════
+function showDialog(opts){
+  opts=opts||{};
+  var icon=opts.icon||"❓";
+  var title=opts.title||"";
+  var msg=opts.msg||"";
+  var okText=opts.okText||"ຢືນຢັນ";
+  var cancelText=opts.cancelText||"ຍົກເລີກ";
+  var okColor=opts.okColor||"var(--primary)";
+  var type=opts.type||"confirm";
+  var inputDefault=opts.inputDefault||"";
+  var inputPlaceholder=opts.inputPlaceholder||"";
+  return new Promise(function(resolve){
+    var overlay=document.getElementById("custom-dialog");
+    if(!overlay){resolve(false);return;}
+    document.getElementById("dlg-icon").textContent=icon;
+    document.getElementById("dlg-title").textContent=title;
+    document.getElementById("dlg-msg").textContent=msg;
+    var inp=document.getElementById("dlg-input");
+    var okBtn=document.getElementById("dlg-ok");
+    var cancelBtn=document.getElementById("dlg-cancel");
+    okBtn.textContent=okText;
+    okBtn.style.background=okColor;
+    cancelBtn.textContent=cancelText;
+    if(type==="prompt"){
+      inp.style.display="block";
+      inp.value=inputDefault||"";
+      inp.placeholder=inputPlaceholder||"";
+      setTimeout(function(){inp.focus();},200);
+    } else {
+      inp.style.display="none";
+    }
+    cancelBtn.style.display=(type==="alert")?"none":"block";
+    overlay.classList.add("open");
+    function cleanup(){overlay.classList.remove("open");}
+    okBtn.onclick=function(){cleanup();resolve(type==="prompt"?inp.value:true);};
+    cancelBtn.onclick=function(){cleanup();resolve(type==="prompt"?null:false);};
+    overlay.onclick=function(e){if(e.target===overlay){cleanup();resolve(type==="prompt"?null:false);}};
+    inp.onkeydown=function(e){if(e.key==="Enter"){cleanup();resolve(inp.value);}};
+  });
+}
+function dlgConfirm(title,msg,icon,okColor){
+  return showDialog({icon:icon||"⚠️",title:title,msg:msg,okText:"ຢືນຢັນ",cancelText:"ຍົກເລີກ",okColor:okColor||"var(--danger)",type:"confirm"});
+}
+function dlgAlert(title,msg,icon){
+  return showDialog({icon:icon||"ℹ️",title:title,msg:msg,okText:"ຕົກລົງ",okColor:"var(--primary)",type:"alert"});
+}
+function dlgPrompt(title,msg,defaultVal,placeholder,icon){
+  return showDialog({icon:icon||"✏️",title:title,msg:msg,okText:"ບັນທຶກ",cancelText:"ຍົກເລີກ",okColor:"var(--primary)",type:"prompt",inputDefault:defaultVal||"",inputPlaceholder:placeholder||""});
+}
+
 </script>
 
 <!-- ═══ CUSTOM DIALOG ═══ -->
