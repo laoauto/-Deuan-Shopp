@@ -683,8 +683,8 @@ const SHOP_CONFIG = {
   secondaryColor:  "#F48FB1",
   headerBgColor:   "#C2185B",
   adminPassword:   "duean2026",
-   backendApiUrl: "https://script.google.com/macros/s/AKfycbzIiqfvFlsEbg0BvJKC6vsYJLKB4kMfc0xwX2BiqN0yYyv9eZBMLHRZlpcAAJOiyP9X8Q/exec",
-  orderApiUrl:   "https://script.google.com/macros/s/AKfycbxReFPJtHNu-vZt8WyH-rlp_GZKGmhzgNIUo-6_1Aext8Cal3_WO_JKABjgOg7Kh7IsHQ/exec",
+  backendApiUrl:   "https://script.google.com/macros/s/AKfycbzIiqfvFlsEbg0BvJKC6vsYJLKB4kMfc0xwX2BiqN0yYyv9eZBMLHRZlpcAAJOiyP9X8Q/exec",
+  orderApiUrl:     "https://script.google.com/macros/s/AKfycbyyJf7DoeU0iKn6Pkh8f7hcW5XAmwF2Mi5dquxf_nE8p4cTzWFMny280cA32qXQ4-huBA/exec",
   qrPaymentUrl:    "https://lh3.googleusercontent.com/d/13wVnnJWEI7SXH5pz9o7fIReUowYEzp2v",
   social: {
     facebook: { url:"https://www.facebook.com/dueansavanh.pms", name:"Duean Shopp" },
@@ -1314,7 +1314,7 @@ async function delHisStock(r){if(!await dlgConfirm("ລຶບປະຫວັດ�
 async function loadOrders(){
   document.getElementById("orders-list").innerHTML='<div class="skel skel-row" style="height:120px;margin-bottom:8px"></div>'.repeat(3);
   try{
-    const res=await fetch(SHOP_CONFIG.orderApiUrl+"?action=getAllOrders",{method:"GET",redirect:"follow"});
+    const res=await fetch(SHOP_CONFIG.orderApiUrl,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"getAllOrders"})});
     const data=JSON.parse(await res.text());
     allOrders=Array.isArray(data)?data:(Array.isArray(data.data)?data.data:[]);
     allOrders.sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||"")));
@@ -1468,7 +1468,7 @@ function initOrderPolling(){
 }
 async function fetchLatestOrders(isInit){
   try{
-    const res=await fetch(SHOP_CONFIG.orderApiUrl+"?action=getAllOrders",{method:"GET",redirect:"follow"});
+    const res=await fetch(SHOP_CONFIG.orderApiUrl,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"getAllOrders"})});
     const data=JSON.parse(await res.text());
     const orders=Array.isArray(data)?data:(Array.isArray(data.data)?data.data:[]);
     if(isInit){orders.forEach(o=>{if(o.code)lastOrderCodes.add(o.code);});return;}
