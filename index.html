@@ -42,7 +42,7 @@ input:focus,select:focus{border-color:var(--primary);outline:none;}
 .banner-wrap{position:relative;width:100%;height:210px;overflow:hidden;background:linear-gradient(135deg,#880E4F,#C2185B);border-radius:0 0 20px 20px;}
 .banner-fade-slide{position:absolute;inset:0;opacity:0;transition:opacity 1s ease-in-out;display:flex;align-items:flex-end;}
 .banner-fade-slide.active{opacity:1;}
-.banner-fade-slide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.banner-fade-slide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:-webkit-optimize-contrast;image-rendering:crisp-edges;}
 .banner-fade-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.7) 0%,rgba(0,0,0,.1) 60%);}
 .banner-fade-info{position:relative;z-index:2;padding:12px 16px;width:100%;}
 .banner-rank-badge{display:inline-block;background:rgba(255,255,255,.22);border:1.5px solid rgba(255,255,255,.55);border-radius:20px;padding:3px 14px;font-size:11px;font-weight:700;margin-bottom:4px;}
@@ -842,10 +842,10 @@ function loadBanner(top10){
   bannerItems=top10;bannerIdx=0;
   const em=["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"];
   top10.forEach((item,i)=>{
-    const img=item.img?convertGD(item.img):"";
+    const img=item.img?convertGD(item.img,"full"):"";
     const d=document.createElement("div");
     d.className="banner-fade-slide"+(i===0?" active":"");
-    d.innerHTML=`${img?`<img src="${img}" alt="${item.name}" onerror="this.style.opacity=0">`:""}<div class="banner-fade-overlay"></div><div class="banner-fade-info"><div class="banner-rank-badge">${em[i]} Top ${i+1}</div><div class="banner-prod-name">${item.name}</div><div class="banner-prod-price">ຂາຍ ${fN(item.qty)} ຊິ້ນ</div></div>`;
+    d.innerHTML=`${img?`<img src="${img}" alt="${item.name}" loading="eager" style="image-rendering:auto" onerror="this.src=convertGD('${item.img}');this.onerror=null">`:""}<div class="banner-fade-overlay"></div><div class="banner-fade-info"><div class="banner-rank-badge">${em[i]} Top ${i+1}</div><div class="banner-prod-name">${item.name}</div><div class="banner-prod-price">ຂາຍ ${fN(item.qty)} ຊິ້ນ</div></div>`;
     sl.appendChild(d);
     const dot=document.createElement("div");
     dot.className="banner-dot"+(i===0?" active":"");
@@ -1678,15 +1678,29 @@ const noImg="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBo
 function pad2(n){return String(n).padStart(2,"0");}
 function fN(n){return Number(n||0).toLocaleString();}
 
-function convertGD(url){
+function getFileId(url){
+  if(!url)return"";
+  const m1=String(url).match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+  if(m1)return m1[1];
+  const m2=String(url).match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+  if(m2)return m2[1];
+  return"";
+}
+function convertGD(url,size){
+  // size: "thumb"=300, "medium"=800, "full"=1600, default=600
   if(!url||!url.trim())return"";
   url=url.trim();
-  if(url.includes("drive.google.com/uc")||url.includes("thumbnail"))return url;
-  const m=url.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
-  if(m)return"https://drive.google.com/thumbnail?id="+m[1]+"&sz=w300";
-  const m2=url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
-  if(m2)return"https://drive.google.com/thumbnail?id="+m2[1]+"&sz=w300";
-  return url;
+  const id=getFileId(url);
+  if(!id){
+    // Already a processed URL - upgrade size if thumbnail
+    if(url.includes("sz=w")){
+      const sz=size==="thumb"?"w400":size==="full"?"w1600":"w800";
+      return url.replace(/sz=w\d+/,"sz="+sz);
+    }
+    return url;
+  }
+  // Use lh3.googleusercontent.com for best quality (no watermark, no size limit)
+  return"https://lh3.googleusercontent.com/d/"+id;
 }
 function driveFileId(url){
   if(!url)return"";
