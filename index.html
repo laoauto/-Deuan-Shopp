@@ -1342,6 +1342,15 @@ function renderOrders(orders){
   document.getElementById("os-wait").textContent=orders.filter(o=>o.orderStatus==="ລໍຖ້າຮັບຍອດ").length;
   document.getElementById("os-done").textContent=orders.filter(o=>o.orderStatus==="ຈັດສົ່ງສຳເລັດ").length;
   document.getElementById("os-amount").textContent=fN(orders.reduce((s,o)=>s+(Number(o.totalAmount)||0),0))+"₭";
+  // COD vs Transfer badge
+  const codOrders=orders.filter(o=>(o.payment||"").includes("COD"));
+  const transferOrders=orders.filter(o=>!(o.payment||"").includes("COD"));
+  const codTotal=codOrders.reduce((s,o)=>s+(Number(o.totalAmount)||0),0);
+  const transferTotal=transferOrders.reduce((s,o)=>s+(Number(o.totalAmount)||0),0);
+  let badge=document.getElementById("os-pay-badge");
+  if(!badge){badge=document.createElement("div");badge.id="os-pay-badge";document.getElementById("order-summary-bar").appendChild(badge);}
+  badge.style.cssText="width:100%;display:flex;gap:8px;margin-top:2px;flex-wrap:wrap";
+  badge.innerHTML=`<span style="display:flex;align-items:center;gap:4px;background:rgba(52,152,219,.12);color:#1a6699;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:bold">💵 COD: ${codOrders.length} (${fN(codTotal)}₭)</span><span style="display:flex;align-items:center;gap:4px;background:rgba(var(--primary-rgb),.12);color:var(--primary);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:bold">💳 ໂອນ: ${transferOrders.length} (${fN(transferTotal)}₭)</span>`;
   const statusDef=[
     {key:"ລໍຖ້າຮັບຍອດ",pill:"sp-wait",label:"⏳ ລໍຖ້າ",btnCls:"st-btn st-wait"},
     {key:"ແມ່ຄ້າຮັບຍອດແລ້ວ",pill:"sp-ok",label:"✅ ຮັບຍອດ",btnCls:"st-btn st-ok"},
@@ -1356,7 +1365,16 @@ function renderOrders(orders){
     const billHtml=o.shippingBillUrl?`<img class="slip-thumb" src="${driveThumb(o.shippingBillUrl,80)}" onclick="viewImg('${o.shippingBillUrl}','ບິນຂົນສົ່ງ')" onerror="this.style.display='none'">`:`<button class="slip-upload-btn" data-upload-code="${code}">📤 ອັບບິນ</button>`;
     const stBtns=statusDef.map(s=>`<button class="${s.btnCls}${o.orderStatus===s.key?" current":""}" onclick="updateStatus('${code}','${s.key}',this)">${s.label}</button>`).join("");
     return `<div class="order-card">
-      <div class="order-card-hdr"><div><div class="order-code">#${o.code||"-"}</div><div class="order-time">🕐 ${o.submittedAt||"-"}</div></div><span class="status-pill ${cur.pill}">${cur.label}</span></div>
+      <div class="order-card-hdr" style="background:${o.payment==="COD"?"linear-gradient(135deg,rgba(52,152,219,.08),rgba(52,152,219,.03))":"linear-gradient(135deg,rgba(var(--primary-rgb),.08),rgba(var(--primary-rgb),.03))"};border-radius:12px;padding:10px 12px;margin-bottom:8px">
+      <div>
+        <div class="order-code">#${o.code||"-"}</div>
+        <div style="font-size:10px;color:var(--text-sub);margin-top:2px">🕐 ${o.submittedAt||"-"}</div>
+        <div style="margin-top:5px;display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:bold;${o.payment==="COD"?"background:rgba(52,152,219,.15);color:#2980b9;border:1px solid rgba(52,152,219,.3)":"background:rgba(var(--primary-rgb),.12);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.25)"}">
+          ${o.payment==="COD"?"💵 COD ເກັບປາຍທາງ":"💳 ໂອນຈ່າຍ"}
+        </div>
+      </div>
+      <span class="status-pill ${cur.pill}">${cur.label}</span>
+    </div>
       <div class="order-info-row"><span class="order-lbl">👤 ຊື່</span><span class="order-val">${o.customerName||"-"}</span></div>
       <div class="order-info-row"><span class="order-lbl">📞 ເບີ</span><span class="order-val"><a href="${waLink(o.customerPhone)}" target="_blank" style="color:var(--primary);font-weight:bold">${o.customerPhone||"-"}</a></span></div>
       <div class="order-info-row"><span class="order-lbl">📍 ທີ່ຢູ່</span><span class="order-val">${o.customerAddr||"-"}</span></div>
@@ -1407,9 +1425,18 @@ async function updateStatus(code,newStatus,btnEl){
 }
 function parseOrderItems(summary){
   const items=[];
-  String(summary).split(/\n|,/).forEach(line=>{
-    const m=line.trim().match(/^(.+?)\s*[×x](\d+)\s*\(([\d,]+)/);
-    if(m)items.push({name:m[1].trim(),qty:parseInt(m[2]),price:parseInt(m[3].replace(/,/g,""))});
+  String(summary).split(/\n/).forEach(line=>{
+    // ຮອງຮັບທຸກ format: "ສິນຄ້າ ×1 (99000 ₭)" ຫຼື "ສິນຄ້າ ×1 (99,000 ₭)" ຫຼື "ສິນຄ້າ ×1 (99.000 ₭)"
+    const m=line.trim().match(/^(.+?)\s*[×xX](\d+)\s*\(([\d,. ]+)/);
+    if(m){
+      // ລຶບ comma, dot, space ກ່ອນ parseInt
+      const rawPrice=m[3].replace(/[,. ]/g,"");
+      const price=parseInt(rawPrice)||0;
+      const qty=parseInt(m[2])||1;
+      if(m[1].trim()&&qty>0&&price>0){
+        items.push({name:m[1].trim(),qty:qty,price:price});
+      }
+    }
   });
   return items;
 }
